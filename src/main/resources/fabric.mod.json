@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "homecraft",
+  "version": "${version}",
+  "name": "HomeCraft",
+  "description": "Control Homeassistant from Minecraft",
+  "authors": [],
+  "contact": {},
+  "license": "MIT",
+  "icon": "assets/homecraft/icon.png",
+  "environment": "server",
+  "entrypoints": {
+    "main": [
+      "dev.aligator.homecraft.Homecraft"
+    ]
+  },
+  "mixins": [
+    "homecraft.mixins.json",
+    {
+      "config": "homecraft.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-language-kotlin": ">=${kotlin_loader_version}",
+    "fabric": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}
