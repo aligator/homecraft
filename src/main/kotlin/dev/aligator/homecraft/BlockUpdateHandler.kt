@@ -139,28 +139,6 @@ class BlockUpdateHandler(
             true
         })
     }
-//    private fun registerRedstoneEvent() {
-//        ServerTickEvents.END_WORLD_TICK.register { world: ServerWorld ->
-///*
-//            if (mode != "redstone") return@register
-//*/
-//
-//            world.players.forEach { player ->
-//                world.
-//                    .forEach { blockEntity ->
-//                    val pos = blockEntity.pos
-//                    val linkType = links.getLinkType(pos)
-//                    if (linkType == LinkType.INPUT || linkType == LinkType.SYNC) {
-//                        val haEntity = links.getEntity(pos)
-//                        haEntity?.let {
-//                            val isPowered = world.isReceivingRedstonePower(pos)
-//                            ha.setState(haEntity, isPowered)
-//                        }
-//                    }
-//                }
-//            }
-//        }
-//    }
 
     /**
      * Checks if there is an attached block (like a button or lever) at a specific face.

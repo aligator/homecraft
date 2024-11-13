@@ -163,4 +163,22 @@ data class BlockLocation(val worldId: RegistryKey<World>, val x: Int, val y: Int
         y = pos.y,
         z = pos.z
     )
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is BlockLocation) return false
+
+        return worldId.toString() == other.worldId.toString() &&
+                x == other.x &&
+                y == other.y &&
+                z == other.z
+    }
+
+    override fun hashCode(): Int {
+        var result = worldId.toString().hashCode()
+        result = 31 * result + x
+        result = 31 * result + y
+        result = 31 * result + z
+        return result
+    }
 }
