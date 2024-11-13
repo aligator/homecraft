@@ -1,11 +1,15 @@
 package dev.aligator.homecraft
 
+import net.fabricmc.fabric.api.event.Event
+import net.fabricmc.fabric.api.event.EventFactory
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents
 import net.fabricmc.fabric.api.event.player.UseBlockCallback
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
 import net.minecraft.block.*
 import net.minecraft.block.entity.BlockEntity
+import net.minecraft.entity.Entity
 import net.minecraft.entity.EntityType
+import net.minecraft.entity.player.BlockBreakingInfo
 import net.minecraft.server.network.ServerPlayerEntity
 import net.minecraft.server.world.ServerWorld
 import net.minecraft.state.property.Properties
@@ -13,6 +17,33 @@ import net.minecraft.text.Text
 import net.minecraft.util.ActionResult
 import net.minecraft.util.math.Direction
 import java.util.logging.Logger
+
+import net.minecraft.world.explosion.Explosion
+import net.minecraft.world.World
+import org.spongepowered.asm.mixin.Mixin
+import org.spongepowered.asm.mixin.injection.At
+import org.spongepowered.asm.mixin.injection.Inject
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable
+import kotlin.math.exp
+
+
+fun interface ExplosionCallback {
+    fun onExplosion(world: World, explosion: Explosion): Boolean
+
+    companion object {
+        val EVENT: Event<ExplosionCallback> = EventFactory.createArrayBacked(ExplosionCallback::class.java) { listeners ->
+            ExplosionCallback { world, explosion ->
+                for (listener in listeners) {
+                    if (!listener.onExplosion(world, explosion)) {
+                        return@ExplosionCallback false
+                    }
+                }
+                true
+            }
+        }
+    }
+}
+
 
 class BlockUpdateHandler(
     private val ha: HomeAssistant, // Replace with your custom Home Assistant handler
@@ -23,7 +54,7 @@ class BlockUpdateHandler(
 
     init {
         // Register all event listeners
-       // registerEntityExplosionEvent()
+        registerEntityExplosionEvent()
         registerBlockExplodeEvent()
         registerBlockBreakEvent()
         registerPlayerInteractEvent()
@@ -33,15 +64,23 @@ class BlockUpdateHandler(
     /**
      * Handles explosions caused by entities like Creeper, TNT, etc.
      */
-//    private fun registerEntityExplosionEvent() {
-//        ServerTickEvents.END_WORLD_TICK.register { world: ServerWorld ->
-//            world.iterateEntities().filter { it.type == EntityType.CREEPER || it.type == EntityType.TNT }
-//                .forEach { entity ->
-//                    val explodedBlocks = world.getEntitiesByClass(BlockEntity::class.java, entity.boundingBox) { true }
-//                    links.removeMatchingBlocks(explodedBlocks.map { it.pos }, "${entity.type.name} blew it up")
-//                }
-//        }
-//    }
+    private fun registerEntityExplosionEvent() {
+        ExplosionCallback.EVENT.register(ExplosionCallback { world, explosion ->
+            if (world.isClient) {
+                return@ExplosionCallback false
+            }
+
+
+            logger.info(explosion.toString())
+            val entityType = explosion.entity?.type ?: return@ExplosionCallback false
+            val affectedBlocks = explosion.affectedBlocks
+
+            // Assuming `links` is an instance of your custom class that handles block removal
+            links.removeMatchingBlocks(world as ServerWorld, affectedBlocks, "${entityType.name} blew it up")
+
+            true
+        })
+    }
 
     /**
      * Handles unknown explosions that affect blocks directly.

@@ -4,6 +4,7 @@
   "package": "dev.aligator.homecraft.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "WorldMixin"
   ],
   "injectors": {
     "defaultRequire": 1
