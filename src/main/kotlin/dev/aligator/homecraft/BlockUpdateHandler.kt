@@ -4,13 +4,8 @@ import net.fabricmc.fabric.api.event.Event
 import net.fabricmc.fabric.api.event.EventFactory
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents
 import net.fabricmc.fabric.api.event.player.UseBlockCallback
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
 import net.minecraft.block.*
-import net.minecraft.block.entity.BlockEntity
-import net.minecraft.entity.Entity
-import net.minecraft.entity.EntityType
-import net.minecraft.entity.player.BlockBreakingInfo
-import net.minecraft.server.network.ServerPlayerEntity
+import net.minecraft.server.world.BlockEvent
 import net.minecraft.server.world.ServerWorld
 import net.minecraft.state.property.Properties
 import net.minecraft.text.Text
@@ -20,29 +15,7 @@ import java.util.logging.Logger
 
 import net.minecraft.world.explosion.Explosion
 import net.minecraft.world.World
-import org.spongepowered.asm.mixin.Mixin
-import org.spongepowered.asm.mixin.injection.At
-import org.spongepowered.asm.mixin.injection.Inject
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable
-import kotlin.math.exp
 
-
-fun interface ExplosionCallback {
-    fun onExplosion(world: World, explosion: Explosion): Boolean
-
-    companion object {
-        val EVENT: Event<ExplosionCallback> = EventFactory.createArrayBacked(ExplosionCallback::class.java) { listeners ->
-            ExplosionCallback { world, explosion ->
-                for (listener in listeners) {
-                    if (!listener.onExplosion(world, explosion)) {
-                        return@ExplosionCallback false
-                    }
-                }
-                true
-            }
-        }
-    }
-}
 
 
 class BlockUpdateHandler(
@@ -54,17 +27,16 @@ class BlockUpdateHandler(
 
     init {
         // Register all event listeners
-        registerEntityExplosionEvent()
         registerBlockExplodeEvent()
         registerBlockBreakEvent()
         registerPlayerInteractEvent()
-     //   registerRedstoneEvent()
+        registerRedstoneEvent()
     }
 
     /**
      * Handles explosions caused by entities like Creeper, TNT, etc.
      */
-    private fun registerEntityExplosionEvent() {
+    private fun registerBlockExplodeEvent() {
         ExplosionCallback.EVENT.register(ExplosionCallback { world, explosion ->
             if (world.isClient) {
                 return@ExplosionCallback false
@@ -75,18 +47,10 @@ class BlockUpdateHandler(
             val entityType = explosion.entity?.type ?: return@ExplosionCallback false
             val affectedBlocks = explosion.affectedBlocks
 
-            // Assuming `links` is an instance of your custom class that handles block removal
             links.removeMatchingBlocks(world as ServerWorld, affectedBlocks, "${entityType.name} blew it up")
 
             true
         })
-    }
-
-    /**
-     * Handles unknown explosions that affect blocks directly.
-     */
-    private fun registerBlockExplodeEvent() {
-        // Fabric doesn't have a direct equivalent, so we handle explosions indirectly, like above.
     }
 
     /**
@@ -158,26 +122,45 @@ class BlockUpdateHandler(
 
     /**
      * Detects redstone updates in "redstone" mode.
-     *//*
+     */
     private fun registerRedstoneEvent() {
-        ServerTickEvents.END_WORLD_TICK.register { world: ServerWorld ->
-            if (mode != "redstone") return@register
+        UpdateNeighborsCallback.EVENT.register(UpdateNeighborsCallback {world, pos ->
 
-            world.players.forEach { player ->
-                world.blockEntities.forEach { blockEntity ->
-                    val pos = blockEntity.pos
-                    val linkType = links.getLinkType(pos)
-                    if (linkType == LinkType.INPUT || linkType == LinkType.SYNC) {
-                        val haEntity = links.getEntity(pos)
-                        haEntity?.let {
-                            val isPowered = world.isReceivingRedstonePower(pos)
-                            ha.setState(haEntity, isPowered)
-                        }
-                    }
-                }
+            // Get the linked entity if available
+            val haEntity = links.getEntity(world, pos)
+            if (haEntity != null) {
+
+                // Check if the block is receiving power
+                val isPowered = world.isReceivingRedstonePower(pos)
+
+                ha.setState(haEntity, isPowered)
             }
-        }*/
-   // }
+
+            true
+        })
+    }
+//    private fun registerRedstoneEvent() {
+//        ServerTickEvents.END_WORLD_TICK.register { world: ServerWorld ->
+///*
+//            if (mode != "redstone") return@register
+//*/
+//
+//            world.players.forEach { player ->
+//                world.
+//                    .forEach { blockEntity ->
+//                    val pos = blockEntity.pos
+//                    val linkType = links.getLinkType(pos)
+//                    if (linkType == LinkType.INPUT || linkType == LinkType.SYNC) {
+//                        val haEntity = links.getEntity(pos)
+//                        haEntity?.let {
+//                            val isPowered = world.isReceivingRedstonePower(pos)
+//                            ha.setState(haEntity, isPowered)
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//    }
 
     /**
      * Checks if there is an attached block (like a button or lever) at a specific face.

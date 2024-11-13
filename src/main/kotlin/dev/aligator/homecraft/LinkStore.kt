@@ -10,7 +10,6 @@ import net.minecraft.world.World
 import org.apache.logging.log4j.LogManager
 import java.io.*
 import java.nio.file.Path
-import java.util.*
 import kotlin.collections.ArrayList
 
 class LinkStore(folder: File) {

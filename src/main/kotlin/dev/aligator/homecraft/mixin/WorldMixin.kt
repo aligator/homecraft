@@ -1,6 +1,8 @@
 package dev.aligator.homecraft.mixin
 
 import dev.aligator.homecraft.ExplosionCallback
+import net.fabricmc.fabric.api.event.Event
+import net.fabricmc.fabric.api.event.EventFactory
 import net.minecraft.entity.Entity
 import net.minecraft.entity.damage.DamageSource
 import net.minecraft.particle.ParticleEffect
@@ -13,6 +15,7 @@ import org.spongepowered.asm.mixin.Mixin
 import org.spongepowered.asm.mixin.injection.At
 import org.spongepowered.asm.mixin.injection.Inject
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable
+
 
 @Mixin(World::class)
 abstract class WorldMixin {
@@ -37,9 +40,6 @@ abstract class WorldMixin {
         soundEvent: RegistryEntry<SoundEvent>?,
         cir: CallbackInfoReturnable<Explosion>
     ) {
-
-        // Example: Log explosion details
-        println("Explosion at ($x, $y, $z) caused by $entity")
         val originalExplosion = cir.returnValue
 
         val world = (this as World)
