@@ -3,16 +3,20 @@ package dev.aligator.homecraft
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.mojang.brigadier.arguments.StringArgumentType
+import com.mojang.brigadier.suggestion.SuggestionProvider
 import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
 import net.fabricmc.loader.api.FabricLoader
+import net.minecraft.block.AbstractSignBlock
 import net.minecraft.block.Blocks
 import net.minecraft.block.SignBlock
+import net.minecraft.block.WallSignBlock
 import net.minecraft.block.entity.SignBlockEntity
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.command.CommandManager
 import net.minecraft.server.command.CommandManager.literal
+import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.server.network.ServerPlayerEntity
 import net.minecraft.server.world.ServerWorld
 import net.minecraft.text.Text
@@ -79,7 +83,7 @@ class Homecraft : ModInitializer {
             dispatcher.register(
                 literal("link").executes { context ->
                     return@executes 0
-                }.then(CommandManager.argument("haEntity", StringArgumentType.string())
+                }.then(CommandManager.argument("haEntity", StringArgumentType.string()).suggests(haEntitySuggestionProvider())
                     .executes { context ->
                         val player = context.source.player
                         if (player == null) {
@@ -93,6 +97,22 @@ class Homecraft : ModInitializer {
             )
         }
     }
+
+
+    private fun haEntitySuggestionProvider(): SuggestionProvider<ServerCommandSource> {
+        return SuggestionProvider { context, builder ->
+            val ha = ha ?: return@SuggestionProvider builder.buildFuture()
+            val links = links ?: return@SuggestionProvider builder.buildFuture()
+
+            val input = builder.remaining
+            val suggestions = ha.searchedEntities(links, input)
+            for (suggestion in suggestions) {
+                builder.suggest(suggestion)
+            }
+            return@SuggestionProvider builder.buildFuture()
+        }
+    }
+
 
     /**
      * Link the block the player looks at to HA.
@@ -130,7 +150,7 @@ class Homecraft : ModInitializer {
 
         val block = player.world.getBlockState(blockPos).block
 
-        if (block === CONTROL_BLOCK || block is SignBlock) {
+        if (block === CONTROL_BLOCK || block is AbstractSignBlock) {
 
             links.add(player.serverWorld, BlockPos(blockPos.x.toInt(), blockPos.y.toInt(), blockPos.z.toInt()), haEntity)
             logger.info("${player.name} linked block at $blockPos to Home Assistant entity '$haEntity'")
@@ -230,7 +250,16 @@ class Homecraft : ModInitializer {
         val signText = if (haState.contains(textPattern)) {
             haState.split(textPattern).take(4)
         } else {
-            listOf("§3$entityName", haState, "", "")
+            val color = if (haState == "on") {
+                // Green
+                "§3"
+            } else if (haState == "off") {
+                // Red
+                "§4"
+            } else {
+                ""
+            }
+            listOf("$entityName", "$color$haState", "", "")
         }
 
         signText.forEachIndexed { index, line ->
