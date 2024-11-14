@@ -2,6 +2,7 @@ package dev.aligator.homecraft
 
 import net.fabricmc.fabric.api.event.Event
 import net.fabricmc.fabric.api.event.EventFactory
+import net.minecraft.block.BlockState
 import net.minecraft.server.world.ServerWorld
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
@@ -38,6 +39,23 @@ fun interface ExplosionCallback {
                     }
                 }
                 true
+            }
+        }
+    }
+}
+
+
+fun interface ComperatorValueCallback {
+    fun onGetComperatorValue(state: BlockState, world: World, pos: BlockPos): Int
+
+    companion object {
+        val EVENT: Event<ComperatorValueCallback> = EventFactory.createArrayBacked(ComperatorValueCallback::class.java) { listeners ->
+            ComperatorValueCallback { state, world, pos ->
+                for (listener in listeners) {
+                    return@ComperatorValueCallback listener.onGetComperatorValue(state, world, pos)
+                }
+
+                return@ComperatorValueCallback 0
             }
         }
     }

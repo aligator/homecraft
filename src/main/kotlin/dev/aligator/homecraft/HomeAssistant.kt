@@ -11,6 +11,7 @@ import org.java_websocket.handshake.ServerHandshake
 import java.net.URI
 import java.net.URISyntaxException
 import java.util.logging.Logger
+import kotlin.collections.MutableMap
 
 /**
  * A WebSocket connection to Home Assistant.
@@ -28,6 +29,7 @@ class HomeAssistant(url: String, private val token: String, private val ma: Home
     val allEntities = ArrayList<String>()  // List of all entity IDs for tab completion
     private var id = 1
     private var statesId = 0
+    val lastValues: MutableMap<String, String> = mutableMapOf()
 
     /**
      * Returns entity IDs that contain a search term. Append " (LINKED)" if it is found in the link store.
@@ -74,8 +76,29 @@ class HomeAssistant(url: String, private val token: String, private val ma: Home
                 subscribe()
             }
             "result" -> handleResult(jsonMessage)
-            "event" -> ma.updateBlocksFromSubscription(jsonMessage["event"].asJsonObject)
+            "event" -> {
+                val event = jsonMessage["event"].asJsonObject
+                if (event["event_type"].asString == "state_changed") {
+                    // Home Assistant has flipped something on or off
+                    val evData = event.getAsJsonObject("data")
+                    val entityID = evData["entity_id"].asString
+
+                    if (!evData.has("new_state") || evData["new_state"].isJsonNull) {
+                        return
+                    }
+
+                    val newState = evData.getAsJsonObject("new_state") ?: evData.getAsJsonObject("state")
+                    val haState = newState["state"].asString
+
+                    lastValues.put(entityID, haState)
+                }
+                ma.updateBlocksFromSubscription(jsonMessage["event"].asJsonObject)
+            }
         }
+    }
+
+    fun lastState(entity: String?): String {
+        return lastValues.getOrDefault(entity, "off")
     }
 
     /**
@@ -150,7 +173,11 @@ class HomeAssistant(url: String, private val token: String, private val ma: Home
 
             // update the tab completion list
             allEntities.clear()
-            result.forEach { allEntities.add(it.asJsonObject["entity_id"].asString) }
+            result.forEach {
+                allEntities.add(it.asJsonObject["entity_id"].asString)
+                lastValues.put(it.asJsonObject["entity_id"].asString, it.asJsonObject["state"].asString)
+            }
+
 
             // update the state of any blocks we have linked
             ma.updateBlocksFromDump(result)

@@ -124,7 +124,7 @@ class SimpleConfig(private val request: ConfigRequest) {
         if (entry.isNotEmpty() && !entry.startsWith("#")) {
             val parts = entry.split("=", limit = 2)
             if (parts.size == 2) {
-                config[parts[0]] = parts[1]
+                this@SimpleConfig.config[parts[0]] = parts[1]
             } else {
                 throw RuntimeException("Syntax error in config file on line $line!")
             }
@@ -140,7 +140,7 @@ class SimpleConfig(private val request: ConfigRequest) {
      */
     @Deprecated("Use getOrDefault instead.")
     fun get(key: String): String? {
-        return config[key]
+        return this@SimpleConfig.config[key]
     }
 
     /**
@@ -150,7 +150,7 @@ class SimpleConfig(private val request: ConfigRequest) {
      * @return value corresponding to the given key, or the default value
      */
     fun getOrDefault(key: String, def: String): String {
-        return config[key] ?: def
+        return this@SimpleConfig.config[key] ?: def
     }
 
     /**
@@ -160,7 +160,7 @@ class SimpleConfig(private val request: ConfigRequest) {
      * @return value corresponding to the given key, or the default value
      */
     fun getOrDefault(key: String, def: Int): Int {
-        return config[key]?.toIntOrNull() ?: def
+        return this@SimpleConfig.config[key]?.toIntOrNull() ?: def
     }
 
     /**
@@ -170,7 +170,7 @@ class SimpleConfig(private val request: ConfigRequest) {
      * @return value corresponding to the given key, or the default value
      */
     fun getOrDefault(key: String, def: Boolean): Boolean {
-        return config[key]?.equals("true", ignoreCase = true) ?: def
+        return this@SimpleConfig.config[key]?.equals("true", ignoreCase = true) ?: def
     }
 
     /**
@@ -180,7 +180,7 @@ class SimpleConfig(private val request: ConfigRequest) {
      * @return value corresponding to the given key, or the default value
      */
     fun getOrDefault(key: String, def: Double): Double {
-        return config[key]?.toDoubleOrNull() ?: def
+        return this@SimpleConfig.config[key]?.toDoubleOrNull() ?: def
     }
 
     /**

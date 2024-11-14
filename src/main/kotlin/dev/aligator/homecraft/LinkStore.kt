@@ -12,7 +12,7 @@ import java.io.*
 import java.nio.file.Path
 import kotlin.collections.ArrayList
 
-class LinkStore(folder: File) {
+class LinkStore(file: File) {
 
     private val gson = Gson()
     private val logger = LogManager.getLogger("Home Assistant Link Store")

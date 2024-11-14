@@ -13,10 +13,6 @@ import net.minecraft.util.ActionResult
 import net.minecraft.util.math.Direction
 import java.util.logging.Logger
 
-import net.minecraft.world.explosion.Explosion
-import net.minecraft.world.World
-
-
 
 class BlockUpdateHandler(
     private val ha: HomeAssistant, // Replace with your custom Home Assistant handler
@@ -27,10 +23,31 @@ class BlockUpdateHandler(
 
     init {
         // Register all event listeners
+        registerComperatorEvent()
         registerBlockExplodeEvent()
         registerBlockBreakEvent()
-        registerPlayerInteractEvent()
+     //   registerPlayerInteractEvent()
         registerRedstoneEvent()
+    }
+
+    /**
+     * Handles explosions caused by entities like Creeper, TNT, etc.
+     */
+    private fun registerComperatorEvent() {
+        ComperatorValueCallback.EVENT.register(ComperatorValueCallback { state, world, pos ->
+            if (world.isClient) {
+                return@ComperatorValueCallback 0
+            }
+            var world = world as ServerWorld
+
+            val entity = links.getEntity(world, pos)
+            if (ha.lastState(entity) == "on") {
+                return@ComperatorValueCallback 15
+            } else {
+                return@ComperatorValueCallback 0
+            }
+
+        })
     }
 
     /**

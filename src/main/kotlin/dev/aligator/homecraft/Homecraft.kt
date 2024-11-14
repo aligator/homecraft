@@ -6,7 +6,19 @@ import com.mojang.brigadier.arguments.StringArgumentType
 import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
+import net.fabricmc.loader.api.FabricLoader
+import net.minecraft.block.Block
+import net.minecraft.block.BlockState
+import net.minecraft.block.Blocks
+import net.minecraft.block.entity.AbstractFurnaceBlockEntity
+import net.minecraft.block.entity.BlockEntity
+import net.minecraft.block.entity.BlockEntityType
 import net.minecraft.block.entity.SignBlockEntity
+import net.minecraft.entity.player.PlayerInventory
+import net.minecraft.recipe.RecipeType
+import net.minecraft.registry.Registries
+import net.minecraft.screen.FurnaceScreenHandler
+import net.minecraft.screen.ScreenHandler
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.command.CommandManager
 import net.minecraft.server.command.CommandManager.literal
@@ -17,52 +29,63 @@ import net.minecraft.text.Text
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.RaycastContext
 import org.apache.logging.log4j.LogManager
-import java.io.File
 import java.net.URISyntaxException
+import java.nio.file.Path
 import java.util.regex.Pattern
+
+import net.minecraft.registry.Registry
+import net.minecraft.util.Identifier
 
 class Homecraft : ModInitializer {
     private val logger = LogManager.getLogger("MineAssistant")
-    private lateinit var links: LinkStore
+    private var links: LinkStore? = null
     private var ha: HomeAssistant? = null
     private var server: MinecraftServer? = null
+    private var updateHandler: BlockUpdateHandler? = null
+
 
     companion object {
-        val CONFIG: SimpleConfig  = SimpleConfig.of( "homecraft" ).request();
+        val config: SimpleConfig  = SimpleConfig.of( "homecraft" ).request();
 
-        val haURL = CONFIG.getOrDefault("ha_url", "http://localhost:8123" );
-        val haToken = CONFIG.getOrDefault("ha_token", "token")
+        val haURL = config.getOrDefault("ha_url", "http://localhost:8123" );
+        val haToken = config.getOrDefault("ha_token", "token")
     }
 
     override fun onInitialize() {
-        links = LinkStore(File("config/homecraft_links"))
-        var  updateHandler: BlockUpdateHandler
+        val path: Path = FabricLoader.getInstance().configDir
 
         ServerLifecycleEvents.SERVER_STARTING.register { minecraftServer ->
-            server = minecraftServer
-            // Initialize Home Assistant connection
+            // Initialize Home Assistant connection.
             try {
                 ha = HomeAssistant(haURL, haToken, this)
-                ha?.connect()
-                ha?.startReconnectTimer()
+                ha!!.connect()
+                ha!!.startReconnectTimer()
+                server = minecraftServer
+
 
                 if (ha != null) {
-                    updateHandler = BlockUpdateHandler(ha!!, links)
+                    links = LinkStore((path.resolve("homecraft_links.json").toFile()))
+                    links!!.read()
+
+                    updateHandler = BlockUpdateHandler(ha!!, links!!)
+
                 }
 
             } catch (e: URISyntaxException) {
-                logger.warn("Invalid URL for Home Assistant", e)
+                logger.warn("Could not connect to Home Assistant", e)
             }
-            links.read()
         }
+        registerCommands()
 
         ServerLifecycleEvents.SERVER_STOPPED.register {
             // Cleanup on server stop
+            links?.commit()
             ha?.close()
             ha = null
-            links.commit()
         }
+    }
 
+    private fun registerCommands() {
         CommandRegistrationCallback.EVENT.register { dispatcher, registry, environment ->
             dispatcher.register(
                 literal("link").executes { context ->
@@ -74,17 +97,25 @@ class Homecraft : ModInitializer {
                             return@executes 0
                         }
                         val haEntity = StringArgumentType.getString(context, "haEntity")
-                        onCommand(player, haEntity)
+                        onLinkBlock(player, haEntity)
                         1
                     }
                 )
             )
         }
-
     }
 
-    private fun onCommand(player: ServerPlayerEntity, haEntity: String): Boolean {
+    /**
+     * Link the block the player looks at to HA.
+     */
+    private fun onLinkBlock(player: ServerPlayerEntity, haEntity: String): Boolean {
         val ha = ha ?: return false
+        val links = links ?: return false
+
+        if (!ha.allEntities.contains(haEntity)) {
+            player.sendMessageToClient(Text.literal("Entity '$haEntity' does not exist!"), false)
+            return true
+        }
 
         // Calculate start and end points of the ray
         val cameraPos = player.getCameraPosVec(1.0f)
@@ -106,11 +137,6 @@ class Homecraft : ModInitializer {
         if (blockPos == null) {
             player.sendMessageToClient(Text.literal("Please look at a block within range."), false)
             return false
-        }
-
-        if (!ha.allEntities.contains(haEntity)) {
-            player.sendMessageToClient(Text.literal("Entity '$haEntity' does not exist!"), false)
-            return true
         }
 
         links.add(player.serverWorld, BlockPos(blockPos.x.toInt(), blockPos.y.toInt(), blockPos.z.toInt()), haEntity)
@@ -165,30 +191,40 @@ class Homecraft : ModInitializer {
 
 
     private fun updateBlocks(entityID: String, entityName: String, haState: String) {
+        val links = links ?: return
+        val server = server ?: return
+
         val invalidLinks = mutableListOf<BlockLocation>()
 
         links.linkedBlocks(entityID) { link ->
-            val world = server?.getWorld(server?.worldRegistryKeys?.find { key -> key.registry == link.location.worldId.registry && key.value == link.location.worldId.value })
+
+            val world = server.getWorld(server.worldRegistryKeys?.find { key -> key.registry == link.location.worldId.registry && key.value == link.location.worldId.value })
             if (world == null) {
+               // invalidLinks.add(link.location)
                 return@linkedBlocks
             }
             val targetBlockPos = BlockPos(link.location.x, link.location.y, link.location.z)
-
-            server?.execute{
-                val l = entityID
+            println("POS ${targetBlockPos}")
+            // Must run in the main thread to be able to access the entities.
+            // TODO: Test if we get null on unloaded chunks?
+            server.execute{
                 val blockEntity = world.getBlockEntity(targetBlockPos)
-
-                if (blockEntity != null && blockEntity is SignBlockEntity) {
-                    updateSign(blockEntity, entityName, haState)
-                    return@execute
+                println("${entityID} ${blockEntity}")
+                if (blockEntity != null) {
+                    println("UPDATE sign${targetBlockPos}")
+                    if (blockEntity is SignBlockEntity) {
+                        updateSign(blockEntity, entityName, haState)
+                        return@execute
+                    }
                 }
 
+                println("UPDATE ${targetBlockPos}")
                 // Handle powerable/openable blocks (e.g., doors, levers)
                 handleBlockUpdate(world, targetBlockPos, haState == "on")
             }
-
         }
 
+        // Remove no longer valid links.
         invalidLinks.forEach(links::remove)
     }
 
@@ -197,7 +233,7 @@ class Homecraft : ModInitializer {
         val signText = if (haState.contains(textPattern)) {
             haState.split(textPattern).take(4)
         } else {
-            listOf("&3$entityName", haState, "", "")
+            listOf("§3$entityName", haState, "", "")
         }
 
         signText.forEachIndexed { index, line ->
@@ -206,6 +242,9 @@ class Homecraft : ModInitializer {
         sign.markDirty()
     }
 
+    // TODO:
+    // Rethink which blocks should be able to send / receive power from HA.
+    // Maybe use a comperator for this?
     fun handleBlockUpdate(world: ServerWorld, pos: BlockPos, newState: Boolean) {
         val blockState = world.getBlockState(pos)
 
@@ -226,6 +265,8 @@ class Homecraft : ModInitializer {
             if (BlockUtil.isPowered(world.getBlockState(pos)) == newState) {
                 BlockUtil.makeSound(world, pos, blockState, newState)
             }
+        } else {
+            world.updateComparators(pos, blockState.block)
         }
     }
 }

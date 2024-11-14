@@ -5,7 +5,9 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "WorldMixin",
-    "ServerWorldMixin"
+    "ServerWorldMixin",
+    "BlockMixin",
+    "ComparatorBlockMixin"
   ],
   "injectors": {
     "defaultRequire": 1
