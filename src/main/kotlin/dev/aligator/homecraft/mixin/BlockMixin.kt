@@ -2,19 +2,14 @@ package dev.aligator.homecraft.mixin
 
 import dev.aligator.homecraft.CONTROL_BLOCK
 import dev.aligator.homecraft.ComperatorValueCallback
-import dev.aligator.homecraft.ExplosionCallback
 import net.minecraft.block.AbstractBlock
-import net.minecraft.block.Block
 import net.minecraft.block.BlockState
-import net.minecraft.block.Blocks
-import net.minecraft.server.world.ServerWorld
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
 import org.spongepowered.asm.mixin.Mixin
 import org.spongepowered.asm.mixin.injection.At
 import org.spongepowered.asm.mixin.injection.Inject
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable
-import kotlin.random.Random
 
 @Mixin(AbstractBlock::class)
 abstract class BlockMixin {

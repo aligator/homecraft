@@ -17,7 +17,7 @@ class LinkStore(file: File) {
     private val gson = Gson()
     private val logger = LogManager.getLogger("Home Assistant Link Store")
     val path: Path = FabricLoader.getInstance().configDir
-    private val file = path.resolve("links.json").toFile()
+    private val file = file
     private var blocks: MutableMap<BlockLocation, LinkedBlock> = mutableMapOf()
 
     /**

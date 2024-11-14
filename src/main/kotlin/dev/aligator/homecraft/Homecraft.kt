@@ -7,25 +7,14 @@ import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
 import net.fabricmc.loader.api.FabricLoader
-import net.minecraft.block.Block
-import net.minecraft.block.BlockState
 import net.minecraft.block.Blocks
 import net.minecraft.block.SignBlock
-import net.minecraft.block.entity.AbstractFurnaceBlockEntity
-import net.minecraft.block.entity.BlockEntity
-import net.minecraft.block.entity.BlockEntityType
 import net.minecraft.block.entity.SignBlockEntity
-import net.minecraft.entity.player.PlayerInventory
-import net.minecraft.recipe.RecipeType
-import net.minecraft.registry.Registries
-import net.minecraft.screen.FurnaceScreenHandler
-import net.minecraft.screen.ScreenHandler
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.command.CommandManager
 import net.minecraft.server.command.CommandManager.literal
 import net.minecraft.server.network.ServerPlayerEntity
 import net.minecraft.server.world.ServerWorld
-import net.minecraft.state.property.Properties
 import net.minecraft.text.Text
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.RaycastContext
@@ -33,9 +22,6 @@ import org.apache.logging.log4j.LogManager
 import java.net.URISyntaxException
 import java.nio.file.Path
 import java.util.regex.Pattern
-
-import net.minecraft.registry.Registry
-import net.minecraft.util.Identifier
 
 val CONTROL_BLOCK = Blocks.BLACK_WOOL
 
@@ -253,9 +239,6 @@ class Homecraft : ModInitializer {
         sign.markDirty()
     }
 
-    // TODO:
-    // Rethink which blocks should be able to send / receive power from HA.
-    // Maybe use a comperator for this?
     fun handleBlockUpdate(world: ServerWorld, pos: BlockPos, newState: Boolean) {
         val blockState = world.getBlockState(pos)
 

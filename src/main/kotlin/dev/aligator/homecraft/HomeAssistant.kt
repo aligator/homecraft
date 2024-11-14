@@ -1,17 +1,16 @@
 package dev.aligator.homecraft
 
 import com.google.gson.Gson
-import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
-import net.minecraft.entity.ai.brain.task.ScheduleActivityTask
 import org.java_websocket.client.WebSocketClient
 import org.java_websocket.handshake.ServerHandshake
 import java.net.URI
-import java.net.URISyntaxException
 import java.util.logging.Logger
 import kotlin.collections.MutableMap
+        // TODO: maybe use a mixin more directly to create a block remove event, to catch all possibilities (e.g. endermen, tnt, ...)
+
 
 /**
  * A WebSocket connection to Home Assistant.

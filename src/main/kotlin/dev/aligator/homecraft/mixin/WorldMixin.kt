@@ -1,8 +1,6 @@
 package dev.aligator.homecraft.mixin
 
 import dev.aligator.homecraft.ExplosionCallback
-import net.fabricmc.fabric.api.event.Event
-import net.fabricmc.fabric.api.event.EventFactory
 import net.minecraft.entity.Entity
 import net.minecraft.entity.damage.DamageSource
 import net.minecraft.particle.ParticleEffect
