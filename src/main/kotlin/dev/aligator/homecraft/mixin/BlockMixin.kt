@@ -1,5 +1,6 @@
 package dev.aligator.homecraft.mixin
 
+import dev.aligator.homecraft.CONTROL_BLOCK
 import dev.aligator.homecraft.ComperatorValueCallback
 import dev.aligator.homecraft.ExplosionCallback
 import net.minecraft.block.AbstractBlock
@@ -24,7 +25,7 @@ abstract class BlockMixin {
         println("Get comparator output for state: $state at position: $pos")
         val block = (this as AbstractBlock)
 
-        if (block === Blocks.BLACK_WOOL) {
+        if (block === CONTROL_BLOCK) {
             val result = ComperatorValueCallback.EVENT.invoker().onGetComperatorValue(state, world, pos)
             println("block $block. $result")
             cir.returnValue = result
@@ -36,7 +37,7 @@ abstract class BlockMixin {
         // Hier können Sie Ihre eigene Logik einfügen, bevor die ursprüngliche Methode ausgeführt wird.
         println("Check if block has comparator output")
         val block = (this as AbstractBlock)
-        if (block === Blocks.BLACK_WOOL) {
+        if (block === CONTROL_BLOCK) {
             cir.returnValue = true
         }
     }

@@ -1,5 +1,6 @@
 package dev.aligator.homecraft.mixin
 
+import dev.aligator.homecraft.CONTROL_BLOCK
 import dev.aligator.homecraft.UpdateNeighborsCallback
 import net.fabricmc.fabric.api.event.Event
 import net.fabricmc.fabric.api.event.EventFactory
@@ -31,7 +32,7 @@ abstract class ServerWorldMixin {
     private fun onUpdateNeighborsAlways(pos: BlockPos, sourceBlock: Block, cir: CallbackInfo) {
         val world = (this as ServerWorld)
 
-        if (world.getBlockState(pos).block === Blocks.BLACK_WOOL) {
+        if (world.getBlockState(pos).block === CONTROL_BLOCK) {
             val result = UpdateNeighborsCallback.EVENT.invoker().onUpdateNeighbors(world, pos)
             if (!result) {
                 cir.cancel()
@@ -45,7 +46,7 @@ abstract class ServerWorldMixin {
     )
     private fun onUpdateNeighborsExcept(pos: BlockPos, sourceBlock: Block, direction: Direction?, cir: CallbackInfo) {
         val world = (this as ServerWorld)
-        if (world.getBlockState(pos).block === Blocks.BLACK_WOOL) {
+        if (world.getBlockState(pos).block === CONTROL_BLOCK) {
             val result = UpdateNeighborsCallback.EVENT.invoker().onUpdateNeighbors(world, pos)
             if (!result) {
                 cir.cancel()
@@ -59,7 +60,7 @@ abstract class ServerWorldMixin {
     )
     private fun onUpdateNeighbor1(pos: BlockPos, sourceBlock: Block, sourcePos: BlockPos, cir: CallbackInfo) {
         val world = (this as ServerWorld)
-        if (world.getBlockState(pos).block === Blocks.BLACK_WOOL) {
+        if (world.getBlockState(pos).block === CONTROL_BLOCK) {
             val result = UpdateNeighborsCallback.EVENT.invoker().onUpdateNeighbors(world, pos)
             if (!result) {
                 cir.cancel()
@@ -73,7 +74,7 @@ abstract class ServerWorldMixin {
     )
     private fun onUpdateNeighbor2(state: BlockState, pos: BlockPos, sourceBlock: Block, sourcePos: BlockPos, notify: Boolean, cir: CallbackInfo) {
         val world = (this as ServerWorld)
-        if (world.getBlockState(pos).block === Blocks.BLACK_WOOL) {
+        if (world.getBlockState(pos).block === CONTROL_BLOCK) {
             val result = UpdateNeighborsCallback.EVENT.invoker().onUpdateNeighbors(world, pos)
             if (!result) {
                 cir.cancel()

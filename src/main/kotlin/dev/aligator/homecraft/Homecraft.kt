@@ -10,6 +10,7 @@ import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.block.Block
 import net.minecraft.block.BlockState
 import net.minecraft.block.Blocks
+import net.minecraft.block.SignBlock
 import net.minecraft.block.entity.AbstractFurnaceBlockEntity
 import net.minecraft.block.entity.BlockEntity
 import net.minecraft.block.entity.BlockEntityType
@@ -35,6 +36,8 @@ import java.util.regex.Pattern
 
 import net.minecraft.registry.Registry
 import net.minecraft.util.Identifier
+
+val CONTROL_BLOCK = Blocks.BLACK_WOOL
 
 class Homecraft : ModInitializer {
     private val logger = LogManager.getLogger("MineAssistant")
@@ -139,13 +142,21 @@ class Homecraft : ModInitializer {
             return false
         }
 
-        links.add(player.serverWorld, BlockPos(blockPos.x.toInt(), blockPos.y.toInt(), blockPos.z.toInt()), haEntity)
-        logger.info("${player.name} linked block at $blockPos to Home Assistant entity '$haEntity'")
-        player.sendMessage(Text.literal("Linked block at $blockPos to entity '$haEntity'"), false)
+        val block = player.world.getBlockState(blockPos).block
 
-        // Request all entity states from Home Assistant
-        ha.fetchEntities()
-        return true
+        if (block === CONTROL_BLOCK || block is SignBlock) {
+
+            links.add(player.serverWorld, BlockPos(blockPos.x.toInt(), blockPos.y.toInt(), blockPos.z.toInt()), haEntity)
+            logger.info("${player.name} linked block at $blockPos to Home Assistant entity '$haEntity'")
+            player.sendMessage(Text.literal("Linked block at $blockPos to entity '$haEntity'"), false)
+
+            // Request all entity states from Home Assistant
+            ha.fetchEntities()
+            return true
+        } else {
+            player.sendMessage(Text.literal("Block at $blockPos is not a valid block for Homecraft"), false)
+            return false
+        }
     }
 
     fun updateBlocksFromDump(states: JsonArray) {
@@ -248,25 +259,6 @@ class Homecraft : ModInitializer {
     fun handleBlockUpdate(world: ServerWorld, pos: BlockPos, newState: Boolean) {
         val blockState = world.getBlockState(pos)
 
-        if (blockState.contains(Properties.OPEN)) {
-            // This block is openable (e.g., door or trapdoor)
-            world.setBlockState(pos, blockState.with(Properties.OPEN, newState))
-
-            // Make a sound if the state has changed
-            if (BlockUtil.isOpen(world.getBlockState(pos)) != newState) {
-                BlockUtil.makeSound(world, pos, blockState, newState)
-            }
-
-        } else if (blockState.contains(Properties.POWERED)) {
-            // This block is powerable (e.g., lever, button)
-            world.setBlockState(pos, blockState.with(Properties.POWERED, newState))
-
-            // Make a sound if the state matches the intended powered state
-            if (BlockUtil.isPowered(world.getBlockState(pos)) == newState) {
-                BlockUtil.makeSound(world, pos, blockState, newState)
-            }
-        } else {
-            world.updateComparators(pos, blockState.block)
-        }
+        world.updateComparators(pos, blockState.block)
     }
 }
