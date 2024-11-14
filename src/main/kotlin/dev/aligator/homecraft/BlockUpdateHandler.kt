@@ -43,7 +43,8 @@ class BlockUpdateHandler(
             val entity = links.getEntity(world, pos)
             if (ha.lastState(entity) == "on") {
                 return@ComperatorValueCallback 15
-            } else {
+            } else
+            {
                 return@ComperatorValueCallback 0
             }
 

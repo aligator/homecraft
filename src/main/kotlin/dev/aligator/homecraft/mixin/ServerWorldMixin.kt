@@ -3,8 +3,10 @@ package dev.aligator.homecraft.mixin
 import dev.aligator.homecraft.UpdateNeighborsCallback
 import net.fabricmc.fabric.api.event.Event
 import net.fabricmc.fabric.api.event.EventFactory
+import net.minecraft.block.AbstractBlock
 import net.minecraft.block.Block
 import net.minecraft.block.BlockState
+import net.minecraft.block.Blocks
 import net.minecraft.block.DoorBlock
 import net.minecraft.entity.Entity
 import net.minecraft.entity.damage.DamageSource
@@ -28,9 +30,12 @@ abstract class ServerWorldMixin {
     )
     private fun onUpdateNeighborsAlways(pos: BlockPos, sourceBlock: Block, cir: CallbackInfo) {
         val world = (this as ServerWorld)
-        val result = UpdateNeighborsCallback.EVENT.invoker().onUpdateNeighbors(world, pos)
-        if (!result) {
-            cir.cancel()
+
+        if (world.getBlockState(pos).block === Blocks.BLACK_WOOL) {
+            val result = UpdateNeighborsCallback.EVENT.invoker().onUpdateNeighbors(world, pos)
+            if (!result) {
+                cir.cancel()
+            }
         }
     }
 
@@ -40,9 +45,11 @@ abstract class ServerWorldMixin {
     )
     private fun onUpdateNeighborsExcept(pos: BlockPos, sourceBlock: Block, direction: Direction?, cir: CallbackInfo) {
         val world = (this as ServerWorld)
-        val result = UpdateNeighborsCallback.EVENT.invoker().onUpdateNeighbors(world, pos)
-        if (!result) {
-            cir.cancel()
+        if (world.getBlockState(pos).block === Blocks.BLACK_WOOL) {
+            val result = UpdateNeighborsCallback.EVENT.invoker().onUpdateNeighbors(world, pos)
+            if (!result) {
+                cir.cancel()
+            }
         }
     }
 
@@ -52,9 +59,11 @@ abstract class ServerWorldMixin {
     )
     private fun onUpdateNeighbor1(pos: BlockPos, sourceBlock: Block, sourcePos: BlockPos, cir: CallbackInfo) {
         val world = (this as ServerWorld)
-        val result = UpdateNeighborsCallback.EVENT.invoker().onUpdateNeighbors(world, pos)
-        if (!result) {
-            cir.cancel()
+        if (world.getBlockState(pos).block === Blocks.BLACK_WOOL) {
+            val result = UpdateNeighborsCallback.EVENT.invoker().onUpdateNeighbors(world, pos)
+            if (!result) {
+                cir.cancel()
+            }
         }
     }
 
@@ -64,9 +73,11 @@ abstract class ServerWorldMixin {
     )
     private fun onUpdateNeighbor2(state: BlockState, pos: BlockPos, sourceBlock: Block, sourcePos: BlockPos, notify: Boolean, cir: CallbackInfo) {
         val world = (this as ServerWorld)
-        val result = UpdateNeighborsCallback.EVENT.invoker().onUpdateNeighbors(world, pos)
-        if (!result) {
-            cir.cancel()
+        if (world.getBlockState(pos).block === Blocks.BLACK_WOOL) {
+            val result = UpdateNeighborsCallback.EVENT.invoker().onUpdateNeighbors(world, pos)
+            if (!result) {
+                cir.cancel()
+            }
         }
     }
 
