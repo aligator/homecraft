@@ -8,10 +8,8 @@ import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
 import net.fabricmc.loader.api.FabricLoader
+import net.minecraft.block.AbstractBlock
 import net.minecraft.block.AbstractSignBlock
-import net.minecraft.block.Blocks
-import net.minecraft.block.SignBlock
-import net.minecraft.block.WallSignBlock
 import net.minecraft.block.entity.SignBlockEntity
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.command.CommandManager
@@ -27,7 +25,9 @@ import java.net.URISyntaxException
 import java.nio.file.Path
 import java.util.regex.Pattern
 
-val CONTROL_BLOCK = Blocks.BLACK_WOOL
+fun isControlBlock(block: AbstractBlock): Boolean {
+  return block is AbstractSignBlock
+}
 
 class Homecraft : ModInitializer {
     private val logger = LogManager.getLogger("MineAssistant")
@@ -41,7 +41,7 @@ class Homecraft : ModInitializer {
         val config: SimpleConfig  = SimpleConfig.of( "homecraft" ).request();
 
         val haURL = config.getOrDefault("ha_url", "http://localhost:8123" );
-        val haToken = config.getOrDefault("ha_token", "token")
+        val haToken = config.getOrDefault("ha_token", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJiOGI4MzVhYjY5NGU0MTk5OTZmYWYxMzYwN2Y0ZjljNSIsImlhdCI6MTczMTY5MTAwOSwiZXhwIjoyMDQ3MDUxMDA5fQ.CV8u2pWYp6Zue89njcbKKnolV4Dv9HqA2zYVV2jVSUs")
     }
 
     override fun onInitialize() {
@@ -150,7 +150,7 @@ class Homecraft : ModInitializer {
 
         val block = player.world.getBlockState(blockPos).block
 
-        if (block === CONTROL_BLOCK || block is AbstractSignBlock) {
+        if (isControlBlock(block)) {
 
             links.add(player.serverWorld, BlockPos(blockPos.x.toInt(), blockPos.y.toInt(), blockPos.z.toInt()), haEntity)
             logger.info("${player.name} linked block at $blockPos to Home Assistant entity '$haEntity'")
