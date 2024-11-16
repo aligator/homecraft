@@ -220,6 +220,7 @@ class Homecraft : ModInitializer {
                // invalidLinks.add(link.location)
                 return@linkedBlocks
             }
+
             val targetBlockPos = BlockPos(link.location.x, link.location.y, link.location.z)
             println("POS ${targetBlockPos}")
             // Must run in the main thread to be able to access the entities.
@@ -228,14 +229,11 @@ class Homecraft : ModInitializer {
                 val blockEntity = world.getBlockEntity(targetBlockPos)
                 println("${entityID} ${blockEntity}")
                 if (blockEntity != null) {
-                    println("UPDATE sign${targetBlockPos}")
                     if (blockEntity is SignBlockEntity) {
-                        updateSign(blockEntity, entityName, haState)
-                        return@execute
+                        updateSign(blockEntity, entityID, entityName, haState)
                     }
                 }
 
-                println("UPDATE ${targetBlockPos}")
                 // Handle powerable/openable blocks (e.g., doors, levers)
                 handleBlockUpdate(world, targetBlockPos, haState == "on")
             }
@@ -245,7 +243,9 @@ class Homecraft : ModInitializer {
         invalidLinks.forEach(links::remove)
     }
 
-    private fun updateSign(sign: SignBlockEntity, entityName: String, haState: String) {
+    private fun updateSign(sign: SignBlockEntity, entityId: String, entityName: String, haState: String) {
+        // Todo refactor
+
         val textPattern = Pattern.quote("\\L")
         val signText = if (haState.contains(textPattern)) {
             haState.split(textPattern).take(4)
@@ -259,11 +259,23 @@ class Homecraft : ModInitializer {
             } else {
                 ""
             }
-            listOf("$entityName", "$color$haState", "", "")
+            listOf(entityName, "$color$haState", "", "")
+
         }
 
         signText.forEachIndexed { index, line ->
+            println("LINE  ${line}")
             sign.setText(sign.getText(true).withMessage(index, Text.literal(line)), true)
+        }
+
+        val signTextBack = if (haState.contains(textPattern)) {
+            haState.split(textPattern).take(4)
+        } else {
+            listOf("$entityId", "", "", "")
+        }
+
+        signTextBack.forEachIndexed { index, line ->
+            sign.setText(sign.getText(false).withMessage(index, Text.literal(line)), false)
         }
         sign.markDirty()
     }

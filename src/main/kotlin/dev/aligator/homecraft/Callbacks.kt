@@ -10,17 +10,14 @@ import net.minecraft.world.explosion.Explosion
 
 
 fun interface UpdateNeighborsCallback {
-    fun onUpdateNeighbors(world: ServerWorld, pos: BlockPos): Boolean
+    fun onUpdateNeighbors(world: ServerWorld, pos: BlockPos)
 
     companion object {
         val EVENT: Event<UpdateNeighborsCallback> = EventFactory.createArrayBacked(UpdateNeighborsCallback::class.java) { listeners ->
             UpdateNeighborsCallback { world, pos,  ->
                 for (listener in listeners) {
-                    if (!listener.onUpdateNeighbors(world, pos)) {
-                        return@UpdateNeighborsCallback false
-                    }
+                    listener.onUpdateNeighbors(world, pos)
                 }
-                true
             }
         }
     }

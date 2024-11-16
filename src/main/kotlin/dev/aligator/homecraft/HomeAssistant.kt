@@ -38,7 +38,6 @@ class HomeAssistant(url: String, private val token: String, private val ma: Home
      */
     fun searchedEntities(links: LinkStore, partial: String): List<String> {
         return allEntities.filter { it.contains(partial) }
-            .map { if (links.containsEntity(it)) "$it (LINKED)" else it }
     }
 
     fun startReconnectTimer() {

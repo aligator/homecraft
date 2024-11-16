@@ -23,10 +23,7 @@ abstract class ServerWorldMixin {
         val world = (this as ServerWorld)
 
         if (isControlBlock(world.getBlockState(pos).block)) {
-            val result = UpdateNeighborsCallback.EVENT.invoker().onUpdateNeighbors(world, pos)
-            if (!result) {
-                cir.cancel()
-            }
+            UpdateNeighborsCallback.EVENT.invoker().onUpdateNeighbors(world, pos)
         }
     }
 
@@ -37,10 +34,7 @@ abstract class ServerWorldMixin {
     private fun onUpdateNeighborsExcept(pos: BlockPos, sourceBlock: Block, direction: Direction?, cir: CallbackInfo) {
         val world = this as ServerWorld
         if (isControlBlock(world.getBlockState(pos).block)) {
-            val result = UpdateNeighborsCallback.EVENT.invoker().onUpdateNeighbors(world, pos)
-            if (!result) {
-                cir.cancel()
-            }
+            UpdateNeighborsCallback.EVENT.invoker().onUpdateNeighbors(world, pos)
         }
     }
 
@@ -51,10 +45,7 @@ abstract class ServerWorldMixin {
     private fun onUpdateNeighbor1(pos: BlockPos, sourceBlock: Block, sourcePos: BlockPos, cir: CallbackInfo) {
         val world = (this as ServerWorld)
         if (isControlBlock(world.getBlockState(pos).block)) {
-            val result = UpdateNeighborsCallback.EVENT.invoker().onUpdateNeighbors(world, pos)
-            if (!result) {
-                cir.cancel()
-            }
+            UpdateNeighborsCallback.EVENT.invoker().onUpdateNeighbors(world, pos)
         }
     }
 
@@ -65,10 +56,7 @@ abstract class ServerWorldMixin {
     private fun onUpdateNeighbor2(state: BlockState, pos: BlockPos, sourceBlock: Block, sourcePos: BlockPos, notify: Boolean, cir: CallbackInfo) {
         val world = (this as ServerWorld)
         if (isControlBlock(world.getBlockState(pos).block)) {
-            val result = UpdateNeighborsCallback.EVENT.invoker().onUpdateNeighbors(world, pos)
-            if (!result) {
-                cir.cancel()
-            }
+            UpdateNeighborsCallback.EVENT.invoker().onUpdateNeighbors(world, pos)
         }
     }
 
