@@ -114,7 +114,6 @@ class HomeAssistant(url: String, private val token: String, private val ma: Home
             add("service", JsonPrimitive("turn_${if (state) "on" else "off"}"))
             add("service_data", serviceData)
         }
-        logger.info(gson.toJson(message))
         send(gson.toJson(message))
     }
 
@@ -152,7 +151,16 @@ class HomeAssistant(url: String, private val token: String, private val ma: Home
             add("id", JsonPrimitive(statesId))
             add("type", JsonPrimitive("get_states"))
         }
-        logger.info(gson.toJson(message))
+        send(gson.toJson(message))
+    }
+
+    fun fetchState(entityId: String) {
+        val message = JsonObject().apply {
+            id++
+            statesId = id
+            add("id", JsonPrimitive(statesId))
+            add("type", JsonPrimitive("get_states"))
+        }
         send(gson.toJson(message))
     }
 

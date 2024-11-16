@@ -6,8 +6,11 @@ import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.suggestion.SuggestionProvider
 import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerBlockEntityEvents
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
-import net.fabricmc.loader.api.FabricLoader
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents
 import net.minecraft.block.AbstractBlock
 import net.minecraft.block.AbstractSignBlock
 import net.minecraft.block.entity.SignBlockEntity
@@ -22,7 +25,6 @@ import net.minecraft.util.math.BlockPos
 import net.minecraft.world.RaycastContext
 import org.apache.logging.log4j.LogManager
 import java.net.URISyntaxException
-import java.nio.file.Path
 import java.util.regex.Pattern
 
 fun isControlBlock(block: AbstractBlock): Boolean {
@@ -31,7 +33,7 @@ fun isControlBlock(block: AbstractBlock): Boolean {
 
 class Homecraft : ModInitializer {
     private val logger = LogManager.getLogger("MineAssistant")
-    private var links: LinkStore? = null
+    private var links: LinkStore = LinkStore()
     private var ha: HomeAssistant? = null
     private var server: MinecraftServer? = null
     private var updateHandler: BlockUpdateHandler? = null
@@ -45,8 +47,6 @@ class Homecraft : ModInitializer {
     }
 
     override fun onInitialize() {
-        val path: Path = FabricLoader.getInstance().configDir
-
         ServerLifecycleEvents.SERVER_STARTING.register { minecraftServer ->
             // Initialize Home Assistant connection.
             try {
@@ -57,22 +57,33 @@ class Homecraft : ModInitializer {
 
 
                 if (ha != null) {
-                    links = LinkStore((path.resolve("homecraft_links.json").toFile()))
-                    links!!.read()
-
-                    updateHandler = BlockUpdateHandler(ha!!, links!!)
-
+                    updateHandler = BlockUpdateHandler(ha!!, links)
                 }
 
             } catch (e: URISyntaxException) {
                 logger.warn("Could not connect to Home Assistant", e)
             }
         }
+
+        // Not sure why, but ServerBlockEntityEvents.BLOCK_ENTITY_LOAD doesn't do anything...
+        ServerChunkEvents.CHUNK_LOAD.register{serverWorld, chunk ->
+            chunk.blockEntities.forEach { pos, entity ->
+                if (entity is SignBlockEntity) {
+                    // Note: pass the entity directly, as we have it already.
+                    // Not doing so leads to a deadlock, as the world may not be set up fully yet.
+                    val controlBlock = ControlBlock(serverWorld, pos, entity)
+                    if (controlBlock.isValid()) {
+                        println("connect homecraft sign ${controlBlock.getWorld()} ${controlBlock.pos} to HA entity: ${controlBlock.getHAEnttyId()} ")
+                        links.add(controlBlock)
+                    }
+                }
+            }
+        }
+
         registerCommands()
 
         ServerLifecycleEvents.SERVER_STOPPED.register {
             // Cleanup on server stop
-            links?.commit()
             ha?.close()
             ha = null
         }
@@ -116,6 +127,7 @@ class Homecraft : ModInitializer {
 
     /**
      * Link the block the player looks at to HA.
+     * Use the sign back lines to save the needed data.
      */
     private fun onLinkBlock(player: ServerPlayerEntity, haEntity: String): Boolean {
         val ha = ha ?: return false
@@ -148,21 +160,17 @@ class Homecraft : ModInitializer {
             return false
         }
 
-        val block = player.world.getBlockState(blockPos).block
-
-        if (isControlBlock(block)) {
-
-            links.add(player.serverWorld, BlockPos(blockPos.x.toInt(), blockPos.y.toInt(), blockPos.z.toInt()), haEntity)
-            logger.info("${player.name} linked block at $blockPos to Home Assistant entity '$haEntity'")
-            player.sendMessage(Text.literal("Linked block at $blockPos to entity '$haEntity'"), false)
-
-            // Request all entity states from Home Assistant
-            ha.fetchEntities()
-            return true
-        } else {
-            player.sendMessage(Text.literal("Block at $blockPos is not a valid block for Homecraft"), false)
+        val controlBlock = ControlBlock(player.serverWorld, blockPos, haEntity)
+        if (!controlBlock.isValid()) {
+            player.sendMessageToClient(Text.literal("Block at $blockPos is not a valid block for Homecraft. Only signs are allowed."), false)
             return false
         }
+
+        links.add(controlBlock)
+        logger.info("${player.name} linked block at $blockPos to Home Assistant entity '$haEntity'")
+        player.sendMessage(Text.literal("Linked block at $blockPos to entity '$haEntity'"), false)
+
+        return true
     }
 
     fun updateBlocksFromDump(states: JsonArray) {
@@ -211,36 +219,32 @@ class Homecraft : ModInitializer {
         val links = links ?: return
         val server = server ?: return
 
-        val invalidLinks = mutableListOf<BlockLocation>()
+        // Not sure what to do with that:
+        //val invalidLinks = mutableListOf<BlockLocation>()
 
         links.linkedBlocks(entityID) { link ->
 
-            val world = server.getWorld(server.worldRegistryKeys?.find { key -> key.registry == link.location.worldId.registry && key.value == link.location.worldId.value })
+            val world = link.getWorld()
             if (world == null) {
                // invalidLinks.add(link.location)
                 return@linkedBlocks
             }
 
-            val targetBlockPos = BlockPos(link.location.x, link.location.y, link.location.z)
-            println("POS ${targetBlockPos}")
             // Must run in the main thread to be able to access the entities.
-            // TODO: Test if we get null on unloaded chunks?
             server.execute{
-                val blockEntity = world.getBlockEntity(targetBlockPos)
-                println("${entityID} ${blockEntity}")
+                val blockEntity = world.getBlockEntity(link.pos)
                 if (blockEntity != null) {
                     if (blockEntity is SignBlockEntity) {
                         updateSign(blockEntity, entityID, entityName, haState)
                     }
                 }
 
-                // Handle powerable/openable blocks (e.g., doors, levers)
-                handleBlockUpdate(world, targetBlockPos, haState == "on")
+                handleBlockUpdate(world, link.pos)
             }
         }
 
         // Remove no longer valid links.
-        invalidLinks.forEach(links::remove)
+        // invalidLinks.forEach(links::remove)
     }
 
     private fun updateSign(sign: SignBlockEntity, entityId: String, entityName: String, haState: String) {
@@ -264,14 +268,13 @@ class Homecraft : ModInitializer {
         }
 
         signText.forEachIndexed { index, line ->
-            println("LINE  ${line}")
             sign.setText(sign.getText(true).withMessage(index, Text.literal(line)), true)
         }
 
         val signTextBack = if (haState.contains(textPattern)) {
             haState.split(textPattern).take(4)
         } else {
-            listOf("$entityId", "", "", "")
+            listOf("[homecraft]", "$entityId", "", "")
         }
 
         signTextBack.forEachIndexed { index, line ->
@@ -280,7 +283,7 @@ class Homecraft : ModInitializer {
         sign.markDirty()
     }
 
-    fun handleBlockUpdate(world: ServerWorld, pos: BlockPos, newState: Boolean) {
+    fun handleBlockUpdate(world: ServerWorld, pos: BlockPos) {
         val blockState = world.getBlockState(pos)
 
         world.updateComparators(pos, blockState.block)

@@ -12,67 +12,23 @@ import java.io.*
 import java.nio.file.Path
 import kotlin.collections.ArrayList
 
-class LinkStore(file: File) {
+/**
+ * A class to manage the association between blocks in the Minecraft world and Home Assistant entities.
+ */
+class LinkStore() {
 
-    private val gson = Gson()
     private val logger = LogManager.getLogger("Home Assistant Link Store")
     val path: Path = FabricLoader.getInstance().configDir
-    private val file = file
-    private var blocks: MutableMap<BlockLocation, LinkedBlock> = mutableMapOf()
+    private var blocks: MutableMap<BlockLocation, ControlBlock> = mutableMapOf()
 
-    /**
-     * Read blocks list from disk.
-     */
-    fun read() {
-        try {
-            FileReader(file).use { reader ->
-                val type = object : TypeToken<ArrayList<LinkedBlock>>() {}.type
-                val values: ArrayList<LinkedBlock>? = gson.fromJson(reader, type)
-
-                blocks = if (values == null) {
-                    mutableMapOf()
-                } else {
-                    values.associateBy { it.location }.toMutableMap()
-                }
-            }
-        } catch (exception: IOException) {
-            if (exception !is FileNotFoundException) {
-                logger.warn("Could not read Home Assistant links: $exception")
-            }
-            blocks = mutableMapOf()
-        }
-    }
-
-    /**
-     * Save the blocks list to disk.
-     */
-    fun commit() {
-        try {
-            FileWriter(file).use { writer ->
-                gson.toJson(blocks.values, writer)
-            }
-        } catch (exception: IOException) {
-            logger.warn("Could not commit Home Assistant links: $exception")
-        }
-    }
 
     /**
      * Operate on all blocks assigned to a specific entity.
      *
      * @param haEntity The ID of the Home Assistant entity
      */
-    fun linkedBlocks(haEntity: String, action: (LinkedBlock) -> Unit) {
-        blocks.values.filter { it.entity == haEntity }.forEach(action)
-    }
-
-    /**
-     * Check if we have at least one block in the store linked to a Home Assistant entity.
-     *
-     * @param haEntity The entity ID to check for
-     * @return whether it was found or not
-     */
-    fun containsEntity(haEntity: String): Boolean {
-        return blocks.values.any { it.entity.equals(haEntity, ignoreCase = true) }
+    fun linkedBlocks(haEntity: String, action: (ControlBlock) -> Unit) {
+        blocks.values.filter { it.getHAEnttyId() == haEntity }.forEach(action)
     }
 
     /**
@@ -85,26 +41,19 @@ class LinkStore(file: File) {
     fun getEntity(world: ServerWorld, pos: BlockPos): String? {
         val location = BlockLocation(world, pos)
         val link = blocks[location] ?: return null
-
-        return if (link.material == world.getBlockState(pos).block.asItem().toString()) {
-            link.entity
-        } else {
-            remove(location)  // Remove the link if the material doesn't match
-            null
-        }
+        return link.getHAEnttyId()
     }
 
     /**
      * Add a new link
      *
-     * @param world the world of the block
-     * @param pos the position of the block
-     * @param haEntity The Home Assistant entity ID
+     * @param controlBlock the ControlBlock to link
      */
-    fun add(world: ServerWorld, pos: BlockPos, haEntity: String) {
-        val link = LinkedBlock(world, pos, haEntity)
-        blocks[link.location] = link
-        commit()
+    fun add(controlBlock: ControlBlock) {
+        val world = controlBlock.getWorld() ?: return
+        if (world != null) {
+            blocks[BlockLocation(world, controlBlock.pos)] = controlBlock
+        }
     }
 
     /**
@@ -113,9 +62,7 @@ class LinkStore(file: File) {
      * @param location The location of the linked block
      */
     fun remove(location: BlockLocation) {
-        if (blocks.remove(location) != null) {
-            commit()
-        }
+        blocks.remove(location)
     }
 
     /**
@@ -129,28 +76,13 @@ class LinkStore(file: File) {
             val removed = blocks.remove(BlockLocation(world, pos))
             if (removed != null) {
                 logger.info(
-                    "${world.getBlockState(pos).block.asItem()} was unlinked from '${removed.entity}' because $reason"
+                    "ControlBlock was unlinked from '${removed.getHAEnttyId()}' because $reason"
                 )
             }
         }
-        commit()
     }
 }
 
-data class LinkedBlock(val location: BlockLocation, val material: String, val entity: String) : Serializable {
-    /**
-     * Create a link between a block and an entity.
-     *
-     * @param world the world of the block
-     * @param pos the position of the block
-     * @param entity The Home Assistant entity ID
-     */
-    constructor(world: ServerWorld, pos: BlockPos, entity: String) : this(
-        location = BlockLocation(world, pos),
-        material = world.getBlockState(pos).block.asItem().toString(),
-        entity = entity
-    )
-}
 
 data class BlockLocation(val worldId: RegistryKey<World>, val x: Int, val y: Int, val z: Int) : Serializable {
 

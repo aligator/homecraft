@@ -6,7 +6,7 @@
   "mixins": [
     "WorldMixin",
     "ServerWorldMixin",
-    "BlockMixin"
+    "AbstractBlockMixin"
   ],
   "injectors": {
     "defaultRequire": 1

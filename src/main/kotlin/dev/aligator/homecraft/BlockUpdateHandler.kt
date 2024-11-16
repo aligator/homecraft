@@ -8,7 +8,6 @@ import java.util.logging.Logger
 
 class BlockUpdateHandler(
     private val ha: HomeAssistant, // Replace with your custom Home Assistant handler
-//    private val mode: String,
     private val links: LinkStore // Replace with your custom LinkStore
 ) {
     private val logger: Logger = Logger.getLogger("Home Assistant Block Update Handler")
@@ -31,10 +30,7 @@ class BlockUpdateHandler(
             // Get the linked entity if available
             val haEntity = links.getEntity(world, pos)
             if (haEntity != null) {
-
-                // Check if the block is receiving power
                 val isPowered = world.isReceivingRedstonePower(pos)
-
                 ha.setState(haEntity, isPowered)
             }
 

@@ -8,7 +8,6 @@ import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
 import net.minecraft.world.explosion.Explosion
 
-
 fun interface UpdateNeighborsCallback {
     fun onUpdateNeighbors(world: ServerWorld, pos: BlockPos)
 
