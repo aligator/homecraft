@@ -6,11 +6,8 @@ import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.suggestion.SuggestionProvider
 import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerBlockEntityEvents
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents
 import net.minecraft.block.AbstractBlock
 import net.minecraft.block.AbstractSignBlock
 import net.minecraft.block.entity.SignBlockEntity
@@ -67,6 +64,7 @@ class Homecraft : ModInitializer {
 
         // Not sure why, but ServerBlockEntityEvents.BLOCK_ENTITY_LOAD doesn't do anything...
         ServerChunkEvents.CHUNK_LOAD.register{serverWorld, chunk ->
+            var anyControlBuffer = false
             chunk.blockEntities.forEach { pos, entity ->
                 if (entity is SignBlockEntity) {
                     // Note: pass the entity directly, as we have it already.
@@ -75,9 +73,35 @@ class Homecraft : ModInitializer {
                     if (controlBlock.isValid()) {
                         println("connect homecraft sign ${controlBlock.getWorld()} ${controlBlock.pos} to HA entity: ${controlBlock.getHAEnttyId()} ")
                         links.add(controlBlock)
+                        anyControlBuffer = true
                     }
                 }
             }
+
+            // For now refetch all - use the rest api later to fetch only the new ones?
+            if (anyControlBuffer) {
+                logger.info("Chunk loaded - refreshing home assistant entities.")
+                ha?.fetchEntities()
+            }
+        }
+
+
+        ServerChunkEvents.CHUNK_UNLOAD.register { serverWorld, chunk ->
+            chunk.blockEntities.forEach { pos, entity ->
+                if (entity is SignBlockEntity) {
+                    val link = links.getLink(serverWorld, pos)
+
+                    if (link != null) {
+                        links.remove(BlockLocation(serverWorld, pos))
+                        println("disconnect homecraft sign ${serverWorld} ${pos} to HA entity: ${link.getHAEnttyId()} due to chunk unloading")
+                    }
+                }
+            }
+        }
+
+        ServerLifecycleEvents.SERVER_STARTED.register { server ->
+            logger.info("Server started - refreshing home assistant entities.")
+            ha?.fetchEntities()
         }
 
         registerCommands()
@@ -113,10 +137,9 @@ class Homecraft : ModInitializer {
     private fun haEntitySuggestionProvider(): SuggestionProvider<ServerCommandSource> {
         return SuggestionProvider { context, builder ->
             val ha = ha ?: return@SuggestionProvider builder.buildFuture()
-            val links = links ?: return@SuggestionProvider builder.buildFuture()
 
             val input = builder.remaining
-            val suggestions = ha.searchedEntities(links, input)
+            val suggestions = ha.searchedEntities(input)
             for (suggestion in suggestions) {
                 builder.suggest(suggestion)
             }
@@ -170,6 +193,7 @@ class Homecraft : ModInitializer {
         logger.info("${player.name} linked block at $blockPos to Home Assistant entity '$haEntity'")
         player.sendMessage(Text.literal("Linked block at $blockPos to entity '$haEntity'"), false)
 
+        ha.fetchEntities()
         return true
     }
 
@@ -193,7 +217,6 @@ class Homecraft : ModInitializer {
      * @param event the JsonObject of an event from HA
      */
     fun updateBlocksFromSubscription(event: JsonObject) {
-        // logger.info(event.toString())
         if (event["event_type"].asString == "state_changed") {
             // Home Assistant has flipped something on or off
             val evData = event.getAsJsonObject("data")

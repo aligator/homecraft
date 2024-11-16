@@ -9,8 +9,6 @@ import org.java_websocket.handshake.ServerHandshake
 import java.net.URI
 import java.util.logging.Logger
 import kotlin.collections.MutableMap
-        // TODO: maybe use a mixin more directly to create a block remove event, to catch all possibilities (e.g. endermen, tnt, ...)
-
 
 /**
  * A WebSocket connection to Home Assistant.
@@ -36,7 +34,7 @@ class HomeAssistant(url: String, private val token: String, private val ma: Home
      * @param partial string to search for in entity IDs
      * @return List of entity IDs that contain the partial string
      */
-    fun searchedEntities(links: LinkStore, partial: String): List<String> {
+    fun searchedEntities(partial: String): List<String> {
         return allEntities.filter { it.contains(partial) }
     }
 
@@ -63,7 +61,6 @@ class HomeAssistant(url: String, private val token: String, private val ma: Home
     }
 
     override fun onMessage(message: String) {
-        logger.info(message)
         val jsonMessage = gson.fromJson(message, JsonObject::class.java)
         when (jsonMessage["type"].asString) {
             "auth_required" -> sendAuth()
@@ -145,16 +142,6 @@ class HomeAssistant(url: String, private val token: String, private val ma: Home
      * Used for tab completion.
      */
     fun fetchEntities() {
-        val message = JsonObject().apply {
-            id++
-            statesId = id
-            add("id", JsonPrimitive(statesId))
-            add("type", JsonPrimitive("get_states"))
-        }
-        send(gson.toJson(message))
-    }
-
-    fun fetchState(entityId: String) {
         val message = JsonObject().apply {
             id++
             statesId = id

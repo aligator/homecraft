@@ -1,16 +1,11 @@
 package dev.aligator.homecraft
 
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
-import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.registry.RegistryKey
 import net.minecraft.server.world.ServerWorld
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
 import org.apache.logging.log4j.LogManager
 import java.io.*
-import java.nio.file.Path
-import kotlin.collections.ArrayList
 
 /**
  * A class to manage the association between blocks in the Minecraft world and Home Assistant entities.
@@ -18,7 +13,6 @@ import kotlin.collections.ArrayList
 class LinkStore() {
 
     private val logger = LogManager.getLogger("Home Assistant Link Store")
-    val path: Path = FabricLoader.getInstance().configDir
     private var blocks: MutableMap<BlockLocation, ControlBlock> = mutableMapOf()
 
 
@@ -29,6 +23,10 @@ class LinkStore() {
      */
     fun linkedBlocks(haEntity: String, action: (ControlBlock) -> Unit) {
         blocks.values.filter { it.getHAEnttyId() == haEntity }.forEach(action)
+    }
+
+    fun getLink(world: ServerWorld, pos: BlockPos): ControlBlock? {
+        return blocks[BlockLocation(world, pos)]
     }
 
     /**
@@ -62,6 +60,7 @@ class LinkStore() {
      * @param location The location of the linked block
      */
     fun remove(location: BlockLocation) {
+        // TODO: make parameters more consistent
         blocks.remove(location)
     }
 

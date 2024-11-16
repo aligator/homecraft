@@ -9,6 +9,6 @@ class HaEntitySuggestionProvider(private val homeAssistant: HomeAssistant) {
      * @return List of suggested entity IDs that match the search term.
      */
     fun getSuggestions(links: LinkStore, searchTerm: String): List<String> {
-        return homeAssistant.searchedEntities(links, searchTerm)
+        return homeAssistant.searchedEntities(searchTerm)
     }
 }
